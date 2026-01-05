@@ -4,6 +4,7 @@ import tempfile
 from pdf_processor import PDFProcessor
 from vector_store import VectorStore
 from chatbot import PDFChatbot
+from presentation_generator import PresentationGenerator
 from PIL import Image
 
 # Page config
@@ -18,12 +19,20 @@ if 'vector_store' not in st.session_state:
     st.session_state.vector_store = None
 if 'chatbot' not in st.session_state:
     st.session_state.chatbot = None
+if 'presentation_generator' not in st.session_state:
+    st.session_state.presentation_generator = None
 if 'processed_pdfs' not in st.session_state:
     st.session_state.processed_pdfs = False
 if 'current_page_index' not in st.session_state:
     st.session_state.current_page_index = 0
 if 'search_results' not in st.session_state:
     st.session_state.search_results = []
+if 'presentation_data' not in st.session_state:
+    st.session_state.presentation_data = None
+if 'current_slide' not in st.session_state:
+    st.session_state.current_slide = 0
+if 'pages_data' not in st.session_state:
+    st.session_state.pages_data = []
 
 def display_page_content(page_data):
     """Display a single page's content with full page image"""
@@ -68,6 +77,54 @@ def display_page_content(page_data):
                     except Exception as e:
                         st.error(f"Error loading image: {e}")
 
+def display_slide(slide_data, presentation_data):
+    """Display a single slide in presentation mode"""
+    # Slide header
+    st.markdown(f"## 🎯 {slide_data['title']}")
+    st.markdown(f"**Slide {slide_data['slide_number']} of {presentation_data['total_slides']}**")
+    
+    # Create layout - content on left, images on right
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        # Display slide content
+        st.markdown("### 📋 Content")
+        st.markdown(slide_data['content'])
+        
+        # Show relevant page numbers
+        if slide_data.get('relevant_pages'):
+            page_nums = [str(p['page_number']) for p in slide_data['relevant_pages']]
+            st.info(f"📄 Based on pages: {', '.join(page_nums)}")
+    
+    with col2:
+        # Display related images
+        st.markdown("### 🖼️ Visuals")
+        if slide_data.get('relevant_pages'):
+            for page in slide_data['relevant_pages']:
+                if page.get('full_page_image') and os.path.exists(page['full_page_image']):
+                    try:
+                        page_image = Image.open(page['full_page_image'])
+                        st.image(
+                            page_image, 
+                            caption=f"Page {page['page_number']}", 
+                            use_column_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Error loading image: {e}")
+        else:
+            st.info("No visuals for this slide")
+
+def display_presentation_overview(presentation_data):
+    """Display presentation title and overview"""
+    st.markdown(f"# 🎯 {presentation_data['title']}")
+    st.markdown(f"*{presentation_data['subtitle']}*")
+    st.markdown(f"**Total Slides: {presentation_data['total_slides']}**")
+    
+    # Slide overview
+    st.markdown("## 📋 Presentation Outline")
+    for i, slide in enumerate(presentation_data['slides'], 1):
+        st.markdown(f"{i}. **{slide['title']}**")
+
 def main():
     st.title("📚 PDF Chatbot with Images")
     st.markdown("Upload PDFs and chat with their content while viewing related images!")
@@ -103,7 +160,8 @@ def main():
                 processor = PDFProcessor()
                 pages_data = processor.process_multiple_pdfs(temp_paths)
                 
-                # Create embeddings
+                # Store pages data and create embeddings
+                st.session_state.pages_data = pages_data
                 st.session_state.vector_store.create_embeddings(pages_data)
                 st.session_state.processed_pdfs = True
                 
@@ -119,9 +177,20 @@ def main():
         st.header("👀 View Mode")
         view_mode = st.radio(
             "Choose viewing style:",
-            ["Multiple Pages", "Single Page", "Chat Only"],
+            ["Presentation Mode", "Multiple Pages", "Single Page", "Chat Only"],
             help="Select how to display search results"
         )
+        
+        # Generate presentation button
+        if st.session_state.processed_pdfs and st.button("🎯 Generate Presentation"):
+            with st.spinner("Creating presentation from PDF content..."):
+                if st.session_state.presentation_generator is None:
+                    st.session_state.presentation_generator = PresentationGenerator()
+                
+                st.session_state.presentation_data = st.session_state.presentation_generator.create_full_presentation(
+                    st.session_state.pages_data
+                )
+                st.success(f"Generated {st.session_state.presentation_data['total_slides']} slides!")
         
         if st.session_state.search_results:
             st.info(f"Found {len(st.session_state.search_results)} relevant pages")
@@ -167,7 +236,63 @@ def main():
             st.write(response)
     
     # Display results based on view mode
-    if st.session_state.search_results:
+    if view_mode == "Presentation Mode":
+        if st.session_state.presentation_data:
+            st.markdown("---")
+            st.header("🎯 Presentation Mode")
+            
+            # Navigation buttons
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+            
+            with col1:
+                if st.button("⏮️ First") and st.session_state.current_slide > 0:
+                    st.session_state.current_slide = 0
+                    st.experimental_rerun()
+            
+            with col2:
+                if st.button("◀️ Previous") and st.session_state.current_slide > 0:
+                    st.session_state.current_slide -= 1
+                    st.experimental_rerun()
+            
+            with col3:
+                slide_options = [f"Slide {i+1}: {slide['title']}" 
+                               for i, slide in enumerate(st.session_state.presentation_data['slides'])]
+                selected_slide = st.selectbox(
+                    "Jump to slide:",
+                    slide_options,
+                    index=st.session_state.current_slide
+                )
+                if selected_slide:
+                    new_slide = int(selected_slide.split(":")[0].split()[1]) - 1
+                    if new_slide != st.session_state.current_slide:
+                        st.session_state.current_slide = new_slide
+                        st.experimental_rerun()
+            
+            with col4:
+                max_slide = len(st.session_state.presentation_data['slides']) - 1
+                if st.button("▶️ Next") and st.session_state.current_slide < max_slide:
+                    st.session_state.current_slide += 1
+                    st.experimental_rerun()
+            
+            with col5:
+                max_slide = len(st.session_state.presentation_data['slides']) - 1
+                if st.button("⏭️ Last") and st.session_state.current_slide < max_slide:
+                    st.session_state.current_slide = max_slide
+                    st.experimental_rerun()
+            
+            st.markdown("---")
+            
+            # Display current slide or overview
+            if st.session_state.current_slide == -1:  # Overview mode
+                display_presentation_overview(st.session_state.presentation_data)
+            else:
+                current_slide_data = st.session_state.presentation_data['slides'][st.session_state.current_slide]
+                display_slide(current_slide_data, st.session_state.presentation_data)
+                
+        else:
+            st.info("Please generate a presentation first using the '🎯 Generate Presentation' button in the sidebar.")
+    
+    elif st.session_state.search_results:
         st.markdown("---")
         
         if view_mode == "Single Page":
