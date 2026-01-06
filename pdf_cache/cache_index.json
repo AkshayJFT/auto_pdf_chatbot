@@ -19,7 +19,7 @@
       "xx.pdf"
     ],
     "file_paths": [
-      "/tmp/tmprwdeluga.pdf"
+      "/tmp/tmps0wpk_zn.pdf"
     ],
     "files_hash": "da0ee4e66409aca276aa7b489a00d7247f71d11485e8e33541316bee920aafc6",
     "processed_data_path": "pdf_cache/processed_data/da0ee4e66409aca276aa7b489a00d7247f71d11485e8e33541316bee920aafc6.pkl",
@@ -27,6 +27,36 @@
     "vector_store_pkl": "pdf_cache/vector_stores/da0ee4e66409aca276aa7b489a00d7247f71d11485e8e33541316bee920aafc6.pkl",
     "presentation_path": "pdf_cache/presentations/da0ee4e66409aca276aa7b489a00d7247f71d11485e8e33541316bee920aafc6.pkl",
     "pages_count": 18,
-    "cached_at": 1767685463.5500333
+    "cached_at": 1767692659.9632475
+  },
+  "ee71637b6d613de7e8f59eb45ad8c68eac727285329e33229429e1b9268664fe": {
+    "files": [
+      "Heritage Stain Finishes Flyer.pdf"
+    ],
+    "file_paths": [
+      "/tmp/tmp177bl5pg.pdf"
+    ],
+    "files_hash": "ee71637b6d613de7e8f59eb45ad8c68eac727285329e33229429e1b9268664fe",
+    "processed_data_path": "pdf_cache/processed_data/ee71637b6d613de7e8f59eb45ad8c68eac727285329e33229429e1b9268664fe.pkl",
+    "vector_store_index": "pdf_cache/vector_stores/ee71637b6d613de7e8f59eb45ad8c68eac727285329e33229429e1b9268664fe.index",
+    "vector_store_pkl": "pdf_cache/vector_stores/ee71637b6d613de7e8f59eb45ad8c68eac727285329e33229429e1b9268664fe.pkl",
+    "presentation_path": "pdf_cache/presentations/ee71637b6d613de7e8f59eb45ad8c68eac727285329e33229429e1b9268664fe.pkl",
+    "pages_count": 2,
+    "cached_at": 1767693325.2016852
+  },
+  "67f30caae55c5085b5a3bfe012dff015e075aba1520ccb3695dac0cc13d130cf": {
+    "files": [
+      "ilovepdf_merged.pdf"
+    ],
+    "file_paths": [
+      "/tmp/tmp8cbkhztm.pdf"
+    ],
+    "files_hash": "67f30caae55c5085b5a3bfe012dff015e075aba1520ccb3695dac0cc13d130cf",
+    "processed_data_path": "pdf_cache/processed_data/67f30caae55c5085b5a3bfe012dff015e075aba1520ccb3695dac0cc13d130cf.pkl",
+    "vector_store_index": "pdf_cache/vector_stores/67f30caae55c5085b5a3bfe012dff015e075aba1520ccb3695dac0cc13d130cf.index",
+    "vector_store_pkl": "pdf_cache/vector_stores/67f30caae55c5085b5a3bfe012dff015e075aba1520ccb3695dac0cc13d130cf.pkl",
+    "presentation_path": "pdf_cache/presentations/67f30caae55c5085b5a3bfe012dff015e075aba1520ccb3695dac0cc13d130cf.pkl",
+    "pages_count": 15,
+    "cached_at": 1767694032.5632315
   }
 }
