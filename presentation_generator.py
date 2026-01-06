@@ -237,7 +237,7 @@ class PresentationGenerator:
         
         # Ask AI to intelligently segment the content
         segmentation_prompt = f"""
-        Analyze this content and create focused segments. Each segment should cover ONE distinct product/topic.
+        Analyze this content and intelligently create focused segments based on the document structure.
         
         CONTENT TO SEGMENT:
         {combined_content}
@@ -245,40 +245,35 @@ class PresentationGenerator:
         PAGE DETAILS:
         {page_details}
         
-        INTELLIGENT SEGMENTATION RULES:
-        1. PRODUCT CATALOGS: If each page describes a different product model/variant (like different door styles, window types, etc.), create ONE SEGMENT PER PAGE
-        2. FEATURE DESCRIPTIONS: If pages describe different features/technologies, create separate segments for major features
-        3. COHESIVE CONTENT: If pages are part of one continuous topic, group them into one segment
-        4. MIXED CONTENT: If some pages are distinct products and others are features, segment accordingly
+        ANALYZE THE CONTENT AND DETERMINE:
+        1. Is each page describing a completely different product/item? (e.g., different door models, window types, product variants)
+        2. Are pages describing different aspects of the same topic? (e.g., features, benefits, specifications of one product)
+        3. Is there a natural grouping that makes sense? (e.g., similar products, related features)
         
-        DETECTION CRITERIA:
-        - Look for model numbers, style names, part numbers (like "002-440", "350 Style", "Heritage", "Legacy")
-        - Look for repeated structures (each page starting with "DETAILS" + product name)
-        - Look for size variations of same product vs completely different products
-        - Look for pricing information that suggests individual products
+        SEGMENTATION APPROACH:
+        - If you detect that each page is a distinct product → Create ONE SEGMENT PER PAGE
+        - If pages are variations of the same product → Group by meaningful distinctions
+        - If pages flow as one topic → Create fewer, more comprehensive segments
+        - Trust your analysis of the content structure
         
-        SEGMENTATION STRATEGY:
-        - If each page has distinct model/style identifiers → One segment per page
-        - If pages share same base product but different sizes → Group similar styles together  
-        - If pages describe features/technologies → Group related features
-        - Maximum segments allowed: {len(page_details)} (one per page if needed)
+        Maximum segments allowed: {len(page_details)} (you can create one per page if needed)
         
         OUTPUT JSON FORMAT:
         {{
             "segments": [
                 {{
-                    "segment_title": "Specific product/feature name",
-                    "relevant_pages": [1],
-                    "main_topic": "Brief description of this specific product/feature",
-                    "content_summary": "Key points about this specific item"
+                    "segment_title": "Extract the specific name/title from the content",
+                    "relevant_pages": [page_numbers],
+                    "main_topic": "What this segment specifically covers",
+                    "content_summary": "Key information about this segment"
                 }}
             ]
         }}
         
-        Focus area context: {focus_area}
+        Focus area: {focus_area}
         Category: {slide_info.get('category', 'general')}
         
-        IMPORTANT: Be granular - if each page represents a distinct product, create individual segments!
+        IMPORTANT: Let the content guide your segmentation. If it's a product catalog with 15 different doors, create 15 segments. If it's a feature document, group related content logically.
         """
         
         try:
@@ -286,7 +281,7 @@ class PresentationGenerator:
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are an expert content analyzer specializing in product catalogs. When each page represents a distinct product (like different door models), create individual segments. When pages describe features or cohesive content, group appropriately. Be granular for product catalogs. Output only valid JSON."},
+                    {"role": "system", "content": "You are an expert content analyzer. Analyze document structure and create intelligent segments. If each page is a distinct product/item, create individual segments. If pages flow together, group them logically. Let the content structure guide you. Always output valid JSON."},
                     {"role": "user", "content": segmentation_prompt}
                 ],
                 max_tokens=1500,
@@ -320,85 +315,13 @@ class PresentationGenerator:
             return self._create_single_segment(slide_info, relevant_pages)
     
     def _create_single_segment(self, slide_info: Dict, relevant_pages: List[Dict]) -> List[Dict]:
-        """Fallback to create segments - auto-detect product catalog pattern"""
-        
-        # Check if this looks like a product catalog where each page = one product
-        is_product_catalog = self._detect_product_catalog_pattern(relevant_pages)
-        
-        if is_product_catalog and len(relevant_pages) > 1:
-            print(f"🔍 DETECTED PRODUCT CATALOG PATTERN - Creating individual segments for {len(relevant_pages)} products")
-            
-            # Create one segment per page for product catalog
-            segments = []
-            for page in relevant_pages:
-                page_text = page.get('text', '')
-                page_num = page.get('page_number', 0)
-                
-                # Extract product identifier from page content
-                product_name = self._extract_product_identifier(page_text, page_num)
-                
-                segments.append({
-                    "segment_title": product_name,
-                    "relevant_pages": [page_num],
-                    "main_topic": f"Details and specifications for {product_name}",
-                    "content_summary": f"Comprehensive information about {product_name} including features, sizes, and specifications"
-                })
-            
-            return segments
-        else:
-            # Default single segment fallback
-            return [{
-                "segment_title": slide_info.get('focus_area', 'Content'),
-                "relevant_pages": [p.get('page_number', 0) for p in relevant_pages],
-                "main_topic": f"Content from pages {[p.get('page_number', 0) for p in relevant_pages]}",
-                "content_summary": slide_info.get('content_summary', 'Product information and details')
-            }]
-    
-    def _detect_product_catalog_pattern(self, pages: List[Dict]) -> bool:
-        """Detect if pages follow product catalog pattern (each page = one product)"""
-        if len(pages) < 2:
-            return False
-        
-        catalog_indicators = 0
-        total_pages = len(pages)
-        
-        for page in pages:
-            page_text = page.get('text', '').lower()
-            
-            # Look for product catalog patterns
-            if any(pattern in page_text for pattern in [
-                'details', 'model', 'style', 'part number', 'item number',
-                'specifications', 'dimensions', 'features', 'price', 'cost',
-                'nominal size', 'unit size', 'frame depth'
-            ]):
-                catalog_indicators += 1
-        
-        # If 70%+ of pages have catalog indicators, it's likely a product catalog
-        return (catalog_indicators / total_pages) >= 0.7
-    
-    def _extract_product_identifier(self, page_text: str, page_num: int) -> str:
-        """Extract product name/identifier from page text"""
-        import re
-        
-        # Try to extract product name from common patterns
-        patterns = [
-            r'(?:DETAILS?\s+)?(.+?(?:Door|Window|Panel)[^.\n]*)',  # "Legacy Single Entry Door"
-            r'(\d{3,}[A-Z]?\s+Style)',  # "350 Style", "110 Style"  
-            r'(\w+\s+\w+\s+Entry\s+Door)',  # "Heritage Single Entry Door"
-            r'(\w+\s+\w+\s+Window)',  # "Mezzo Casement Window"
-            r'(\d+-\d+\w*)',  # "002-440"
-            r'(Model\s+\w+)',  # "Model ABC"
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, page_text, re.IGNORECASE)
-            if match:
-                product_name = match.group(1).strip()
-                if len(product_name) > 3:  # Avoid too short matches
-                    return product_name
-        
-        # Fallback to generic name with page number
-        return f"Product {page_num}"
+        """Fallback to create single segment"""
+        return [{
+            "segment_title": slide_info.get('focus_area', 'Content'),
+            "relevant_pages": [p.get('page_number', 0) for p in relevant_pages],
+            "main_topic": f"Content from pages {[p.get('page_number', 0) for p in relevant_pages]}",
+            "content_summary": slide_info.get('content_summary', 'Product information and details')
+        }]
 
     def generate_slide_content(self, slide_info: Dict, pages_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Generate detailed content segments for a slide using AI segmentation"""
