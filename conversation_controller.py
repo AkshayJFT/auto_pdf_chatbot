@@ -129,7 +129,10 @@ class ConversationController:
                 type="presentation",
                 text=segment.text,
                 images=segment.images,
-                segment_id=segment.id
+                segment_id=segment.id,
+                category=getattr(segment, 'category', None),
+                image_strategy=getattr(segment, 'image_strategy', 'show_multiple'),
+                image_timing=getattr(segment, 'image_timing', None)
             )
             
             # Add presentation segment to history

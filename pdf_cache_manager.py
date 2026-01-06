@@ -131,7 +131,10 @@ class PDFCacheManager:
                         'images': seg.images,
                         'duration_seconds': seg.duration_seconds,
                         'pdf_page': seg.pdf_page,
-                        'pdf_name': seg.pdf_name
+                        'pdf_name': seg.pdf_name,
+                        'category': getattr(seg, 'category', 'general'),
+                        'image_strategy': getattr(seg, 'image_strategy', 'show_multiple'),
+                        'image_timing': getattr(seg, 'image_timing', None)
                     } for seg in presentation_generator.segments
                 ],
                 'pages_data': presentation_generator.pages_data
@@ -205,7 +208,10 @@ class PDFCacheManager:
                     images=seg_data['images'],
                     duration_seconds=seg_data['duration_seconds'],
                     pdf_page=seg_data['pdf_page'],
-                    pdf_name=seg_data['pdf_name']
+                    pdf_name=seg_data['pdf_name'],
+                    category=seg_data.get('category', 'general'),
+                    image_strategy=seg_data.get('image_strategy', 'show_multiple'),
+                    image_timing=seg_data.get('image_timing')
                 )
                 presentation_generator.segments.append(segment)
             

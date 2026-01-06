@@ -968,7 +968,9 @@
                         }
                         pausedSpeechPosition = 0;
                         pausedTypewriterPosition = 0;
-                    }
+                    },
+                    message.image_strategy || 'show_multiple',
+                    message.image_timing || null
                 );
             } else {
                 // No stored positions, start from beginning
@@ -984,7 +986,9 @@
                                 command: 'segment_complete'
                             }));
                         }
-                    }
+                    },
+                    message.image_strategy || 'show_multiple',
+                    message.image_timing || null
                 );
             }
             
@@ -1013,13 +1017,13 @@
                 updateLastSpokenIndicator(message.text);
                 
                 if (speechSynthesis) {
-                    updateImageDisplay(message.images || []);
+                    updateImageDisplay(message.images || [], message.image_strategy, message.image_timing);
                     speakText(message.text, () => {
                         isProcessingQueue = false;
                         processMessageQueue();
                     });
                 } else {
-                    updateImageDisplay(message.images || []);
+                    updateImageDisplay(message.images || [], message.image_strategy, message.image_timing);
                     isProcessingQueue = false;
                     processMessageQueue();
                 }
@@ -1047,7 +1051,9 @@
                         () => {
                             isProcessingQueue = false;
                             processMessageQueue();
-                        }
+                        },
+                        message.image_strategy || 'show_multiple',
+                        message.image_timing || null
                     );
                 } else {
                     // Regular message handling for non-presentation content
@@ -1069,14 +1075,14 @@
             }
         }
         
-        function startSynchronizedStreaming(text, images, startTypewriterPos = 0, startSpeechPos = 0, callback) {
+        function startSynchronizedStreaming(text, images, startTypewriterPos = 0, startSpeechPos = 0, callback, imageStrategy = 'show_multiple', imageTiming = null) {
             console.log(`🔄 STARTING SYNCHRONIZED STREAMING - typewriter: ${startTypewriterPos}, speech: ${startSpeechPos}`);
             
             syncedStreamingActive = true;
             streamingStartTime = Date.now();
             
-            // Update images
-            updateImageDisplay(images);
+            // Update images with strategy and timing
+            updateImageDisplay(images, imageStrategy, imageTiming);
             
             // Create message div
             const messagesDiv = document.getElementById('chatMessages');
@@ -1415,27 +1421,65 @@
             }, speed);
         }
         
-        function updateImageDisplay(images) {
-            if (images.length > 0) {
-                const mainImage = document.getElementById('mainImage');
-                let imageSrc = images[0];
-                
-                // Handle base64 data URLs or regular image paths
-                if (imageSrc.startsWith('data:image')) {
-                    mainImage.src = imageSrc;
-                } else {
-                    mainImage.src = `/static/${imageSrc}`;
-                }
-                
-                // Only change if it's a different image
-                if (mainImage.src !== imageSrc) {
-                    mainImage.style.opacity = '0';
-                    setTimeout(() => {
-                        mainImage.src = imageSrc;
-                        mainImage.style.opacity = '1';
-                        animateImageChange();
-                    }, 200);
-                }
+        function updateImageDisplay(images, imageStrategy = 'show_multiple', imageTiming = null) {
+            if (images.length === 0) return;
+            
+            const mainImage = document.getElementById('mainImage');
+            
+            if (images.length === 1 || imageStrategy === 'single') {
+                // Show single image
+                showImage(images[0]);
+            } else {
+                // Show multiple images with timing
+                showMultipleImages(images, imageTiming);
+            }
+        }
+        
+        function showImage(imageSrc) {
+            const mainImage = document.getElementById('mainImage');
+            
+            // Handle base64 data URLs or regular image paths
+            let processedSrc = imageSrc;
+            if (!imageSrc.startsWith('data:image')) {
+                processedSrc = `/static/${imageSrc}`;
+            }
+            
+            // Smooth transition effect
+            mainImage.style.opacity = '0';
+            setTimeout(() => {
+                mainImage.src = processedSrc;
+                mainImage.style.opacity = '1';
+                animateImageChange();
+            }, 300);
+        }
+        
+        function showMultipleImages(images, imageTiming = null) {
+            if (images.length === 0) return;
+            
+            // Show first image immediately
+            showImage(images[0]);
+            
+            if (images.length === 1) return;
+            
+            // Calculate timing for subsequent images
+            let timings = imageTiming;
+            if (!timings) {
+                // Default: distribute evenly over the speech duration
+                const interval = 4000; // 4 seconds between images
+                timings = images.map((_, index) => index * interval);
+            } else {
+                // Convert seconds to milliseconds
+                timings = imageTiming.map(t => t * 1000);
+            }
+            
+            // Schedule subsequent image changes
+            for (let i = 1; i < images.length; i++) {
+                setTimeout(() => {
+                    if (!isPresentationPaused) { // Only change if not paused
+                        showImage(images[i]);
+                        console.log(`📸 Showing image ${i + 1}/${images.length} for current slide`);
+                    }
+                }, timings[i]);
             }
         }
         

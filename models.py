@@ -36,6 +36,9 @@ class BotResponse(BaseModel):
     images: List[str] = []
     segment_id: Optional[int] = None
     sources: Optional[List[str]] = None
+    category: Optional[str] = None
+    image_strategy: str = "show_multiple"
+    image_timing: Optional[List[float]] = None
 
 class PresentationSegment(BaseModel):
     id: int
@@ -44,6 +47,9 @@ class PresentationSegment(BaseModel):
     duration_seconds: int = 5
     pdf_page: Optional[int] = None
     pdf_name: Optional[str] = None
+    category: Optional[str] = None
+    image_strategy: str = "show_multiple"  # "show_multiple", "single", "sequence"
+    image_timing: Optional[List[float]] = None  # When to show each image (in seconds)
 
 class PricingRequest(BaseModel):
     windows: List[Dict[str, Any]]
