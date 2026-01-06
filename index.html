@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF AI Assistant</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            z-index: 10;
+        }
+        
+        .header h1 {
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: 1.8rem;
+            margin: 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .status {
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+            color: #22c55e;
+            text-align: center;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+            backdrop-filter: blur(10px);
+            letter-spacing: 0.5px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--error-color);
+            animation: pulse 2s infinite;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        
+        .status-indicator.connected {
+            background: #22c55e;
+        }
+        
+        .status-indicator.disconnected {
+            background: #ef4444;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .container {
+            flex: 1;
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            gap: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .image-section {
+            flex: 0 0 50%;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            padding: 2rem;
+        }
+        
+        .image-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+            animation: rotate 30s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+        }
+        
+        .panel-header h3 {
+            color: #ffffff;
+            margin: 0;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+        
+        .panel-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-icon {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #ffffff;
+            padding: 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-icon:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .presentation-controls {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: none;
+            background: rgba(255,255,255,0.02);
+        }
+        
+        .slide-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .nav-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .nav-btn:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .control-button {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 0 0.25rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .control-button:hover {
+            background: linear-gradient(135deg, #334155 0%, #475569 100%);
+            transform: translateY(-2px);
+        }
+        
+        .image-display {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 1rem;
+            overflow: hidden;
+        }
+        
+        .image-display img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .image-overlay {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+            max-width: 80%;
+        }
+        
+        .images-content {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .content-placeholder {
+            text-align: center;
+            color: rgba(255,255,255,0.4);
+            margin-top: 2rem;
+        }
+        
+        .content-placeholder i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+        
+        .slide-image-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .slide-image-item:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .slide-image-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .chat-section {
+            flex: 0 0 50%;
+            background: #0d0d0d;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .chat-header {
+            padding: 2rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .chat-header h2 {
+            font-weight: 300;
+            letter-spacing: 1px;
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .chat-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-150%) rotate(45deg); }
+            100% { transform: translateX(150%) rotate(45deg); }
+        }
+        
+        .header-controls {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .audio-toggle, .mode-toggle {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.7rem 1.5rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(20px);
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        .audio-toggle:hover, .mode-toggle:hover {
+            background: rgba(255,255,255,0.15);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        .audio-toggle.muted {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+        }
+        
+        .audio-toggle.speaking {
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            animation: audioSpeaking 1s infinite;
+        }
+        
+        @keyframes audioSpeaking {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(6, 182, 212, 0); }
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            background: #0d0d0d;
+            scroll-behavior: smooth;
+        }
+        
+        .messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .messages::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .messages::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 0.5rem;
+            animation: slideInMessage 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 1rem;
+            align-items: flex-start;
+        }
+        
+        @keyframes slideInMessage {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px) scale(0.95);
+                filter: blur(4px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
+        }
+        
+        .message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .message-content {
+            max-width: 80%;
+            padding: 1rem 1.5rem;
+            border-radius: 20px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            word-wrap: break-word;
+            text-align: justify;
+            text-justify: inter-word;
+            hyphens: auto;
+        }
+        
+        .message-content:hover {
+            transform: translateY(-2px) scale(1.01);
+        }
+        
+        .message.bot .message-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+        
+        .message.user .message-content {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            color: white;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+        }
+        
+        .typing-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3b82f6;
+            animation: typing 1.4s infinite ease-in-out;
+            margin: 0 2px;
+        }
+        
+        .typing-indicator:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        .cursor {
+            color: #3b82f6;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .input-section {
+            padding: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+        
+        .presentation-controls-bottom {
+            display: none;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.05);
+            color: #e0e0e0;
+            backdrop-filter: blur(10px);
+        }
+        
+        input[type="text"]::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+        
+        input[type="text"]:focus {
+            border-color: rgba(59, 130, 246, 0.5);
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+        
+        .voice-input-button {
+            background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+            padding: 1rem;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        
+        .voice-input-button:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+        }
+        
+        .voice-input-button.recording {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            animation: recordingPulse 1s infinite;
+        }
+        
+        @keyframes recordingPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
+        }
+        
+        button {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        button:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+        
+        button:disabled {
+            background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+            cursor: not-allowed;
+            opacity: 0.5;
+            box-shadow: none;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 10, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .loading-spinner {
+            text-align: center;
+            color: #ffffff;
+        }
+        
+        .loading-spinner i {
+            font-size: 3rem;
+            color: #3b82f6;
+            margin-bottom: 1rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Animation improvements */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PDF AI Assistant</h1>
+    </div>
+    
+    <div class="status" id="status">
+        <span class="status-indicator disconnected" id="statusIndicator"></span>
+        <span id="statusText">Disconnected</span>
+    </div>
+
+    <div class="container">
+        <div class="image-section">
+            <div class="floating-particles" id="particles"></div>
+            <div class="image-display" id="imageDisplay">
+                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWExYTJlIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFJIEFzc2lzdGFudDwvdGV4dD48L3N2Zz4=" alt="AI Assistant" id="mainImage">
+                <div class="image-overlay">
+                    <h3>PDF AI Assistant</h3>
+                    <p>Upload PDFs to start an intelligent presentation</p>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="chat-section">
+            <div class="chat-header">
+                <h2>AI Chat Interface</h2>
+                <div class="header-controls">
+                    <button class="audio-toggle" id="audioToggle" title="Toggle Audio On/Off">🔊</button>
+                    <button class="mode-toggle" id="modeToggle">🎵 Voice Only</button>
+                </div>
+            </div>
+
+                <div class="messages" id="chatMessages">
+                    <div class="message bot">
+                        <div class="message-content">
+                            <p>Hello! I'm your AI Assistant with advanced presentation capabilities. Upload your PDF documents and I'll create an intelligent presentation with streaming text and synchronized visuals.</p>
+                            <div class="suggestions">
+                                <span class="suggestion" onclick="sendSuggestion('What are the key topics in these documents?')">
+                                    📊 Key Topics
+                                </span>
+                                <span class="suggestion" onclick="sendSuggestion('Create a presentation summary')">
+                                    🎯 Generate Presentation
+                                </span>
+                                <span class="suggestion" onclick="sendSuggestion('Show me the main findings')">
+                                    🔍 Main Findings
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <div class="input-section">
+                <div class="presentation-controls" id="presentationControls" style="display: none;">
+                    <button class="control-button" id="pauseResumeButton" title="Pause/Resume">⏸️</button>
+                    <button class="control-button" id="nextButton" title="Next Slide">⏭️</button>
+                </div>
+                <div class="input-wrapper">
+                    <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
+                    <button onclick="document.getElementById('fileInput').click()" id="uploadBtn" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); margin-right: 0.5rem;">📁 Upload PDFs</button>
+                    <input type="text" id="messageInput" placeholder="Type your message or ask a question..." disabled>
+                    <button class="voice-input-button" id="voiceInputButton" title="Voice Input (Speech to Text)" disabled>
+                        🎤
+                    </button>
+                    <button id="sendButton" disabled>Send</button>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let conversationId = null;
+        let isRecording = false;
+        let speechSynthesis = window.speechSynthesis;
+        let recognition = null;
+        let voiceOnlyMode = false;
+        let isTyping = false;
+        let currentTypewriterTimer = null;
+        let messageQueue = [];
+        let isProcessingQueue = false;
+        let lastSpokenContext = '';
+        let conversationHistory = [];
+        let canInterrupt = true;
+        let isPresentationPaused = false;
+        let isInPresentation = true;
+        let lastCommandTime = 0;
+        let isAudioEnabled = true;
+        let isVoiceInputRecording = false;
+        let voiceInputRecognition = null;
+        
+        // Progress tracking for precise pause/resume
+        let currentSlideText = '';
+        let currentSpeechPosition = 0;
+        let currentTypewriterPosition = 0;
+        let pausedSpeechPosition = 0;
+        let pausedTypewriterPosition = 0;
+        let currentUtterance = null;
+        let currentSlideWords = [];
+        let speechStartTime = 0;
+        let speechProgressTimer = null;
+        let speechProgressInterval = null;
+        let typewriterSyncTimer = null;
+        let presentationStartTime = 0;
+        let segmentStartTime = 0;
+        let syncedStreamingActive = false;
+        let streamingStartTime = 0;
+        let wordsPerSecond = 2.5;  // Speech rate
+        let charactersPerSecond = 15;  // Typing rate
+        
+        // Initialize Web Speech API
+        if ('webkitSpeechRecognition' in window) {
+            try {
+                voiceInputRecognition = new webkitSpeechRecognition();
+                voiceInputRecognition.continuous = false;
+                voiceInputRecognition.interimResults = false;
+                voiceInputRecognition.lang = 'en-US';
+                console.log('Voice input recognition initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize voice input recognition:', error);
+                voiceInputRecognition = null;
+            }
+        }
+        
+        async function uploadPDFs() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            
+            if (files.length === 0) {
+                alert('Please select PDF files to upload');
+                return;
+            }
+            
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('files', file);
+            }
+            
+            updateStatus('Uploading and processing PDFs...');
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const cacheMsg = result.cached ? ' (loaded from cache)' : '';
+                    updateStatus(`Processed ${result.pages_count} pages successfully${cacheMsg}`);
+                    
+                    // Show cache info in console for debugging
+                    if (result.cached) {
+                        console.log('✅ Loaded from cache - instant processing!');
+                    } else {
+                        console.log('📦 Processed and cached for next time');
+                        if (result.cache_hash) {
+                            console.log(`Cache hash: ${result.cache_hash}`);
+                        }
+                    }
+                    
+                    enableInputs();
+                    startConversation();
+                } else {
+                    updateStatus('Failed to process PDFs');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                updateStatus('Upload failed');
+            }
+        }
+        
+        async function startConversation() {
+            try {
+                const response = await fetch('/api/conversation/start', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                conversationId = data.conversation_id;
+                
+                // Connect WebSocket
+                ws = new WebSocket(`ws://localhost:8000/ws/${conversationId}`);
+                
+                ws.onopen = () => {
+                    updateStatus('Connected - Starting presentation...');
+                };
+                
+                ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    handleBotMessage(message);
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateStatus('Connection error');
+                };
+                
+                ws.onclose = () => {
+                    updateStatus('Disconnected');
+                    disableInputs();
+                };
+                
+            } catch (error) {
+                console.error('Failed to start conversation:', error);
+                updateStatus('Failed to connect');
+            }
+        }
+        
+        function handleBotMessage(message) {
+            console.log(`🔥 FRONTEND: Received message: type=${message.type}`, message);
+            
+            // Handle special resume_mid_segment message
+            if (message.type === 'resume_mid_segment') {
+                console.log(`🚀 FRONTEND: RECEIVED MID-SEGMENT RESUME SIGNAL for segment ${message.segment_id}`);
+                console.log(`🚀 FRONTEND: Current pause positions - speech: ${pausedSpeechPosition}, typewriter: ${pausedTypewriterPosition}`);
+                handleMidSegmentResume();
+                return;
+            }
+            
+            // Handle presentation resume after interruption
+            if (message.type === 'presentation_resume') {
+                console.log(`🔄 FRONTEND: RECEIVED PRESENTATION RESUME after interruption for segment ${message.segment_id}`);
+                handlePresentationResume(message);
+                return;
+            }
+            
+            messageQueue.push(message);
+            processMessageQueue();
+        }
+        
+        function handleMidSegmentResume() {
+            console.log(`🚀 HANDLING MID-SEGMENT RESUME from backend signal`);
+            console.log(`🚀 FRONTEND PAUSE STATE: speechPos=${pausedSpeechPosition}, typewriterPos=${pausedTypewriterPosition}, slideText length=${currentSlideText ? currentSlideText.length : 0}`);
+            
+            if (!currentSlideText) {
+                console.log('❌ No current slide text, cannot resume');
+                return;
+            }
+            
+            // FORCE valid positions - never allow zero positions for mid-segment resume
+            const words = currentSlideText.split(/\s+/);
+            const chars = currentSlideText.length;
+            
+            // Track if we're using hardcoded fallback positions
+            let usingHardcodedFallback = false;
+            
+            // Ensure we have valid pause positions
+            if (pausedSpeechPosition === 0 && pausedTypewriterPosition === 0) {
+                usingHardcodedFallback = true;
+                console.log('⚠️ ZERO PAUSE POSITIONS - FORCING 30% HARDCODED DEFAULTS');
+                pausedSpeechPosition = Math.floor(words.length * 0.3); // 30% through speech
+                pausedTypewriterPosition = Math.floor(chars * 0.3);   // 30% through typing
+            }
+            
+            // Clamp positions to valid ranges
+            pausedSpeechPosition = Math.max(1, Math.min(pausedSpeechPosition, words.length - 1));
+            pausedTypewriterPosition = Math.max(1, Math.min(pausedTypewriterPosition, chars - 1));
+            
+            console.log(`🚀 FORCING RESUME FROM ${usingHardcodedFallback ? '⚠️ HARDCODED' : '✅ REAL'} POSITIONS: speechPos=${pausedSpeechPosition}/${words.length}, typewriterPos=${pausedTypewriterPosition}/${chars}`);
+            
+            // The backend told us to resume, so we do the same as our local resume
+            isPresentationPaused = false;
+            
+            // Resume from saved positions
+            currentSpeechPosition = pausedSpeechPosition;
+            currentTypewriterPosition = pausedTypewriterPosition;
+            
+            // FORCE Resume typewriter from the paused position
+            const messages = document.querySelectorAll('.message.bot');
+            if (messages.length > 0) {
+                const lastMessage = messages[messages.length - 1];
+                const contentDiv = lastMessage.querySelector('.message-content');
+                if (contentDiv) {
+                    console.log(`🔥 FORCING TYPEWRITER RESUME from position ${pausedTypewriterPosition}`);
+                    
+                    // Set the content to what should be displayed up to the pause point
+                    const textUpToPause = currentSlideText.substring(0, pausedTypewriterPosition);
+                    contentDiv.innerHTML = textUpToPause;
+                    
+                    // Continue typewriter from pause position
+                    typeWriterEffect(contentDiv, currentSlideText, 80, () => {
+                        // When typewriter completes, signal to backend that segment is done
+                        if (ws) {
+                            ws.send(JSON.stringify({
+                                command: 'segment_complete'
+                            }));
+                        }
+                    }, pausedTypewriterPosition);
+                } else {
+                    console.log('❌ No content div found for typewriter resume');
+                }
+            } else {
+                console.log('❌ No messages found for typewriter resume');
+            }
+            
+            // FORCE Resume speech from the paused position
+            if (isAudioEnabled && pausedSpeechPosition < words.length) {
+                console.log(`🔊 FORCING SPEECH RESUME from word ${pausedSpeechPosition}`);
+                setTimeout(() => {
+                    speakText(currentSlideText, () => {
+                        console.log('🔊 Speech completed after resume');
+                    }, pausedSpeechPosition);
+                }, 100);
+            }
+            
+            // DON'T clear paused positions immediately - keep them for debugging
+            console.log(`✅ RESUME COMPLETE - kept positions for debugging: speech=${pausedSpeechPosition}, typewriter=${pausedTypewriterPosition}`);
+            
+            updateStatus('Resumed from pause...');
+        }
+        
+        function handlePresentationResume(message) {
+            console.log(`🔄 HANDLING PRESENTATION RESUME after Q&A interruption`);
+            
+            // This is a resume after Q&A interruption - use the stored positions
+            if (pausedSpeechPosition > 0 || pausedTypewriterPosition > 0) {
+                console.log(`🔄 RESUMING FROM INTERRUPTION POSITIONS - Speech: ${pausedSpeechPosition}, Typewriter: ${pausedTypewriterPosition}`);
+                
+                // Start synchronized streaming from interruption positions
+                startSynchronizedStreaming(
+                    message.text, 
+                    message.images || [], 
+                    pausedTypewriterPosition,
+                    pausedSpeechPosition,
+                    () => {
+                        // When done, signal backend to continue with next segment
+                        if (ws) {
+                            ws.send(JSON.stringify({
+                                command: 'segment_complete'
+                            }));
+                        }
+                        pausedSpeechPosition = 0;
+                        pausedTypewriterPosition = 0;
+                    }
+                );
+            } else {
+                // No stored positions, start from beginning
+                console.log(`🔄 NO INTERRUPTION POSITIONS - starting from beginning`);
+                startSynchronizedStreaming(
+                    message.text, 
+                    message.images || [], 
+                    0,
+                    0,
+                    () => {
+                        if (ws) {
+                            ws.send(JSON.stringify({
+                                command: 'segment_complete'
+                            }));
+                        }
+                    }
+                );
+            }
+            
+            updateStatus('Resumed presentation after Q&A...');
+        }
+        
+        function processMessageQueue() {
+            if (isProcessingQueue || messageQueue.length === 0) {
+                return;
+            }
+            
+            isProcessingQueue = true;
+            const message = messageQueue.shift();
+            console.log('Processing message from queue:', message);
+            
+            conversationHistory.push({
+                text: message.text,
+                type: message.type || 'response',
+                timestamp: Date.now(),
+                images: message.images || [],
+                role: 'assistant'
+            });
+            
+            if (voiceOnlyMode) {
+                lastSpokenContext = message.text;
+                updateLastSpokenIndicator(message.text);
+                
+                if (speechSynthesis) {
+                    updateImageDisplay(message.images || []);
+                    speakText(message.text, () => {
+                        isProcessingQueue = false;
+                        processMessageQueue();
+                    });
+                } else {
+                    updateImageDisplay(message.images || []);
+                    isProcessingQueue = false;
+                    processMessageQueue();
+                }
+            } else {
+                // Use synchronized streaming for presentation content
+                if (message.type === 'presentation' || message.type === 'rag_answer') {
+                    const isResumeFromPause = message.type === 'presentation' && 
+                        currentSlideText === message.text && pausedSpeechPosition > 0;
+                    
+                    if (message.type === 'presentation' && !isResumeFromPause) {
+                        currentSlideText = message.text;
+                        currentSlideWords = message.text.split(/\s+/);
+                        currentSpeechPosition = 0;
+                        currentTypewriterPosition = 0;
+                        segmentStartTime = Date.now();
+                        console.log(`📝 NEW SEGMENT STARTED at ${new Date().toLocaleTimeString()}`);
+                    }
+                    
+                    // Start synchronized streaming
+                    startSynchronizedStreaming(
+                        message.text, 
+                        message.images || [], 
+                        isResumeFromPause ? pausedTypewriterPosition : 0,
+                        isResumeFromPause ? pausedSpeechPosition : 0,
+                        () => {
+                            isProcessingQueue = false;
+                            processMessageQueue();
+                        }
+                    );
+                } else {
+                    // Regular message handling for non-presentation content
+                    addMessageWithTypewriter(message.text, 'bot', message.images || [], () => {
+                        isProcessingQueue = false;
+                        processMessageQueue();
+                    });
+                }
+            }
+            
+            if (message.type === 'presentation') {
+                updateStatus('Presenting...');
+                showPresentationControls(true);
+                isInPresentation = true;
+            } else if (message.type === 'rag_answer') {
+                updateStatus('Ready for questions');
+                showPresentationControls(false);
+                isInPresentation = false;
+            }
+        }
+        
+        function startSynchronizedStreaming(text, images, startTypewriterPos = 0, startSpeechPos = 0, callback) {
+            console.log(`🔄 STARTING SYNCHRONIZED STREAMING - typewriter: ${startTypewriterPos}, speech: ${startSpeechPos}`);
+            
+            syncedStreamingActive = true;
+            streamingStartTime = Date.now();
+            
+            // Update images
+            updateImageDisplay(images);
+            
+            // Create message div
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            // Set initial content up to start position
+            const initialText = text.substring(0, startTypewriterPos);
+            contentDiv.innerHTML = initialText;
+            
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            // Calculate timing for perfect sync
+            const words = text.split(/\s+/);
+            const totalChars = text.length;
+            const remainingChars = totalChars - startTypewriterPos;
+            const remainingWords = words.slice(startSpeechPos);
+            
+            if (remainingChars <= 0) {
+                // Nothing left to stream
+                syncedStreamingActive = false;
+                if (callback) callback();
+                return;
+            }
+            
+            // Start speech first (if enabled)
+            let speechStarted = false;
+            if (isAudioEnabled && remainingWords.length > 0) {
+                speechStarted = true;
+                speakText(text, () => {
+                    console.log('🔊 Synchronized speech completed');
+                }, startSpeechPos);
+            }
+            
+            // Start synchronized typewriter
+            let currentPos = startTypewriterPos;
+            const syncTimer = setInterval(() => {
+                if (!syncedStreamingActive) {
+                    clearInterval(syncTimer);
+                    return;
+                }
+                
+                if (currentPos < totalChars) {
+                    currentPos++;
+                    currentTypewriterPosition = currentPos;
+                    
+                    // Update display
+                    contentDiv.innerHTML = text.substring(0, currentPos);
+                    
+                    // Track progress
+                    if (currentPos % 20 === 0) {
+                        const elapsed = (Date.now() - streamingStartTime) / 1000;
+                        console.log(`⌨️ SYNC PROGRESS: ${currentPos}/${totalChars} chars (${Math.round((currentPos/totalChars)*100)}%) - ${elapsed.toFixed(1)}s`);
+                    }
+                    
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                } else {
+                    // Typewriter completed
+                    clearInterval(syncTimer);
+                    currentTypewriterPosition = totalChars;
+                    syncedStreamingActive = false;
+                    
+                    console.log('⌨️ Synchronized typewriter completed');
+                    
+                    if (callback) {
+                        setTimeout(callback, speechStarted ? 500 : 0); // Wait a bit if speech is still going
+                    }
+                }
+            }, 1000 / charactersPerSecond); // Character rate timing
+        }
+        
+        function speakText(text, callback, startFromPosition = 0) {
+            if (!isAudioEnabled) {
+                if (callback) callback();
+                return;
+            }
+            
+            speechSynthesis.cancel();
+            
+            if (speechProgressInterval) {
+                clearInterval(speechProgressInterval);
+                speechProgressInterval = null;
+            }
+            
+            currentSlideText = text;
+            currentSlideWords = text.split(/\s+/);
+            currentSpeechPosition = startFromPosition;
+            
+            const wordsToSpeak = currentSlideWords.slice(startFromPosition);
+            const textToSpeak = wordsToSpeak.join(' ');
+            
+            if (textToSpeak.trim() === '') {
+                if (callback) callback();
+                return;
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            currentUtterance = utterance;
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            const audioButton = document.getElementById('audioToggle');
+            if (audioButton) audioButton.classList.add('speaking');
+            
+            // Estimate words per second for progress tracking
+            const wordsPerSecond = 2.5; // Approximate speaking rate
+            const speechDuration = wordsToSpeak.length / wordsPerSecond;
+            speechStartTime = Date.now();
+            
+            utterance.onstart = () => {
+                updateStatus('Speaking...');
+                
+                // Track speech progress for pause/resume functionality
+                speechProgressInterval = setInterval(() => {
+                    if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                        const elapsed = (Date.now() - speechStartTime) / 1000;
+                        const estimatedWordsSpoken = Math.floor(elapsed * wordsPerSecond);
+                        currentSpeechPosition = Math.min(
+                            startFromPosition + estimatedWordsSpoken, 
+                            currentSlideWords.length
+                        );
+                    }
+                }, 100); // Update every 100ms
+            };
+            
+            utterance.onend = () => {
+                if (audioButton) audioButton.classList.remove('speaking');
+                if (speechProgressInterval) {
+                    clearInterval(speechProgressInterval);
+                    speechProgressInterval = null;
+                }
+                currentUtterance = null;
+                currentSpeechPosition = currentSlideWords.length; // Mark as complete
+                updateStatus('Ready');
+                if (callback) callback();
+            };
+            
+            utterance.onerror = () => {
+                if (audioButton) audioButton.classList.remove('speaking');
+                if (speechProgressInterval) {
+                    clearInterval(speechProgressInterval);
+                    speechProgressInterval = null;
+                }
+                currentUtterance = null;
+                updateStatus('Speech error');
+                if (callback) callback();
+            };
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text || !ws) return;
+            
+            interruptOngoingProcesses();
+            addMessage(text, 'user');
+            
+            conversationHistory.push({
+                text: text,
+                type: 'user',
+                timestamp: Date.now()
+            });
+            
+            const recentHistory = getRecentConversationContext();
+            ws.send(JSON.stringify({
+                text: text,
+                conversation_history: recentHistory
+            }));
+            
+            input.value = '';
+            createParticles();
+        }
+        
+        function getRecentConversationContext() {
+            const recent = conversationHistory.slice(-10).map(msg => ({
+                role: msg.type === 'user' ? 'user' : 'assistant',
+                content: msg.text,
+                timestamp: msg.timestamp
+            }));
+            
+            return recent;
+        }
+        
+        function interruptOngoingProcesses() {
+            console.log(`🛑 INTERRUPTING PRESENTATION - capturing position for resume`);
+            
+            // Capture current positions for later resume
+            if (isInPresentation && currentSlideText) {
+                pausedSpeechPosition = currentSpeechPosition;
+                pausedTypewriterPosition = currentTypewriterPosition;
+                
+                console.log(`🛑 CAPTURED INTERRUPTION POSITIONS - Speech: ${pausedSpeechPosition}, Typewriter: ${pausedTypewriterPosition}`);
+            }
+            
+            // Stop all ongoing processes
+            syncedStreamingActive = false;
+            speechSynthesis.cancel();
+            
+            if (currentTypewriterTimer) {
+                clearInterval(currentTypewriterTimer);
+                currentTypewriterTimer = null;
+            }
+            
+            if (speechProgressInterval) {
+                clearInterval(speechProgressInterval);
+                speechProgressInterval = null;
+            }
+            
+            if (typewriterSyncTimer) {
+                clearInterval(typewriterSyncTimer);
+                typewriterSyncTimer = null;
+            }
+            
+            if (speechProgressTimer) {
+                clearInterval(speechProgressTimer);
+                speechProgressTimer = null;
+            }
+            
+            messageQueue = [];
+            isProcessingQueue = false;
+            isTyping = false;
+            
+            const audioButton = document.getElementById('audioToggle');
+            if (audioButton) audioButton.classList.remove('speaking');
+            
+            updateStatus('Processing new input...');
+        }
+        
+        function addMessage(text, sender, images = []) {
+            console.log('Adding message:', text, 'from:', sender);
+            const messagesDiv = document.getElementById('chatMessages');
+            if (!messagesDiv) {
+                console.error('chatMessages element not found!');
+                return;
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = text;
+            
+            if (images.length > 0) {
+                updateImageDisplay(images);
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            console.log('Message added successfully');
+        }
+        
+        function addMessageWithTypewriter(text, sender, images = [], callback, startFromPosition = 0, speed = 30) {
+            if (currentTypewriterTimer) {
+                clearInterval(currentTypewriterTimer);
+                currentTypewriterTimer = null;
+            }
+            
+            if (sender === 'bot') {
+                currentSlideText = text;
+                currentTypewriterPosition = startFromPosition;
+            }
+            
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (sender === 'bot') {
+                contentDiv.innerHTML = '<span class="typing-indicator"></span><span class="typing-indicator"></span><span class="typing-indicator"></span>';
+                isTyping = true;
+                
+                if (images.length > 0) {
+                    updateImageDisplay(images);
+                }
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            setTimeout(() => {
+                typeWriterEffect(contentDiv, text, speed, () => {
+                    isTyping = false;
+                    if (callback) callback();
+                }, startFromPosition);
+            }, sender === 'bot' ? 1000 : 0);
+        }
+        
+        function typeWriterEffect(element, text, speed = 50, callback, startFromPosition = 0) {
+            const completedText = text.substring(0, startFromPosition);
+            const remainingText = text.substring(startFromPosition);
+            
+            element.innerHTML = completedText;
+            let i = 0;
+            
+            if (remainingText.length === 0) {
+                if (callback) callback();
+                return;
+            }
+            
+            currentTypewriterTimer = setInterval(() => {
+                if (i < remainingText.length) {
+                    element.innerHTML = completedText + remainingText.substring(0, i + 1);
+                    i++;
+                    
+                    currentTypewriterPosition = startFromPosition + i;
+                    
+                    // Track real progress every 10 characters
+                    if (currentTypewriterPosition % 10 === 0) {
+                        const elapsedTime = (Date.now() - segmentStartTime) / 1000;
+                        console.log(`⌨️ TYPEWRITER PROGRESS: ${currentTypewriterPosition}/${text.length} chars (${Math.round((currentTypewriterPosition/text.length)*100)}%) - ${elapsedTime.toFixed(1)}s elapsed`);
+                    }
+                    
+                    const messagesDiv = document.getElementById('chatMessages');
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                } else {
+                    clearInterval(currentTypewriterTimer);
+                    currentTypewriterTimer = null;
+                    currentTypewriterPosition = text.length;
+                    if (callback) callback();
+                }
+            }, speed);
+        }
+        
+        function updateImageDisplay(images) {
+            if (images.length > 0) {
+                const mainImage = document.getElementById('mainImage');
+                let imageSrc = images[0];
+                
+                // Handle base64 data URLs or regular image paths
+                if (imageSrc.startsWith('data:image')) {
+                    mainImage.src = imageSrc;
+                } else {
+                    mainImage.src = `/static/${imageSrc}`;
+                }
+                
+                // Only change if it's a different image
+                if (mainImage.src !== imageSrc) {
+                    mainImage.style.opacity = '0';
+                    setTimeout(() => {
+                        mainImage.src = imageSrc;
+                        mainImage.style.opacity = '1';
+                        animateImageChange();
+                    }, 200);
+                }
+            }
+        }
+        
+        function updateLastSpokenIndicator(text) {
+            const imageOverlay = document.querySelector('.image-overlay h3');
+            if (imageOverlay) {
+                imageOverlay.textContent = 'Currently Speaking';
+            }
+            const imageOverlayDesc = document.querySelector('.image-overlay p');
+            if (imageOverlayDesc) {
+                imageOverlayDesc.textContent = text.length > 80 ? text.substring(0, 80) + '...' : text;
+            }
+        }
+        
+        function animateImageChange() {
+            const imageDisplay = document.getElementById('imageDisplay');
+            imageDisplay.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                imageDisplay.style.transform = 'scale(1)';
+            }, 300);
+        }
+        
+        function updateStatus(status) {
+            document.getElementById('status').textContent = status;
+        }
+        
+        function enableInputs() {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+            document.getElementById('voiceInputButton').disabled = false;
+        }
+        
+        function disableInputs() {
+            document.getElementById('messageInput').disabled = true;
+            document.getElementById('sendButton').disabled = true;
+            document.getElementById('voiceInputButton').disabled = true;
+        }
+        
+        function createParticles() {
+            const particleContainer = document.getElementById('particles');
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.width = particle.style.height = (Math.random() * 10 + 5) + 'px';
+                    particle.style.animationDelay = Math.random() * 2 + 's';
+                    particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                    particleContainer.appendChild(particle);
+                    
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 8000);
+                }, i * 200);
+            }
+        }
+        
+        function toggleVoiceMode() {
+            interruptOngoingProcesses();
+            
+            voiceOnlyMode = !voiceOnlyMode;
+            const toggle = document.getElementById('modeToggle');
+            const messages = document.getElementById('chatMessages');
+            
+            if (voiceOnlyMode) {
+                toggle.textContent = '💬 Text Mode';
+                messages.classList.add('voice-only-mode');
+                updateStatus('Voice-only mode active');
+                if (lastSpokenContext) {
+                    updateLastSpokenIndicator(lastSpokenContext);
+                }
+            } else {
+                toggle.textContent = '🎵 Voice Only';
+                messages.classList.remove('voice-only-mode');
+                updateStatus('Ready');
+                const imageOverlay = document.querySelector('.image-overlay h3');
+                if (imageOverlay) {
+                    imageOverlay.textContent = 'PDF AI Assistant';
+                }
+            }
+        }
+        
+        function togglePauseResume() {
+            if (!ws || !conversationId) return;
+            
+            const now = Date.now();
+            if (now - lastCommandTime < 500) return;
+            lastCommandTime = now;
+            
+            isPresentationPaused = !isPresentationPaused;
+            const button = document.getElementById('pauseResumeButton');
+            
+            if (isPresentationPaused) {
+                button.textContent = '▶️';
+                button.title = 'Resume';
+                
+                // Capture current positions precisely - FORCE SAVE
+                pausedSpeechPosition = Math.max(currentSpeechPosition, 0);
+                pausedTypewriterPosition = Math.max(currentTypewriterPosition, 0);
+                
+                // Track if we're using real or fallback positions
+                let usingFallback = false;
+                
+                // If no progress yet, use some reasonable defaults based on elapsed time
+                if (pausedSpeechPosition === 0 && pausedTypewriterPosition === 0 && currentSlideText) {
+                    usingFallback = true;
+                    const elapsedTime = (Date.now() - segmentStartTime) / 1000;
+                    
+                    // Estimate progress based on how long the slide has been running
+                    const words = currentSlideText.split(/\s+/);
+                    const chars = currentSlideText.length;
+                    
+                    // Assume some progress has been made (10% fallback)
+                    pausedSpeechPosition = Math.min(Math.floor(words.length * 0.1), words.length - 1);
+                    pausedTypewriterPosition = Math.min(Math.floor(chars * 0.1), chars - 1);
+                    
+                    console.log(`⚠️ USING FALLBACK POSITIONS - elapsed time: ${elapsedTime.toFixed(1)}s`);
+                }
+                
+                console.log(`🔴 PAUSING ${usingFallback ? '(FALLBACK)' : '(REAL)'}: Speech pos=${pausedSpeechPosition}, Typewriter pos=${pausedTypewriterPosition}, Total words=${currentSlideWords.length}, Total chars=${currentSlideText ? currentSlideText.length : 0}`);
+                
+                // Stop all ongoing processes
+                syncedStreamingActive = false; // Stop synchronized streaming
+                
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                }
+                if (speechProgressInterval) {
+                    clearInterval(speechProgressInterval);
+                    speechProgressInterval = null;
+                }
+                if (currentTypewriterTimer) {
+                    clearInterval(currentTypewriterTimer);
+                    currentTypewriterTimer = null;
+                }
+                if (typewriterSyncTimer) {
+                    clearInterval(typewriterSyncTimer);
+                    typewriterSyncTimer = null;
+                }
+                
+                isProcessingQueue = false;
+                messageQueue = [];
+                
+                ws.send(JSON.stringify({
+                    command: 'pause_presentation'
+                }));
+                updateStatus('Presentation paused');
+            } else {
+                button.textContent = '⏸️';
+                button.title = 'Pause';
+                
+                console.log(`RESUMING from: Speech pos=${pausedSpeechPosition}, Typewriter pos=${pausedTypewriterPosition}`);
+                
+                // Send resume command to backend - backend will send us a resume signal
+                ws.send(JSON.stringify({
+                    command: 'resume_presentation'
+                }));
+                updateStatus('Resuming presentation...');
+            }
+        }
+        
+        function resumePresentation() {
+            if (!currentSlideText || pausedSpeechPosition === 0) return;
+            
+            console.log(`RESUMING PRESENTATION: Speech=${pausedSpeechPosition}, Typewriter=${pausedTypewriterPosition}`);
+            
+            // Restore positions
+            currentSpeechPosition = pausedSpeechPosition;
+            currentTypewriterPosition = pausedTypewriterPosition;
+            
+            // Resume typewriter if not complete
+            if (pausedTypewriterPosition < currentSlideText.length) {
+                const messages = document.querySelectorAll('.message.bot');
+                if (messages.length > 0) {
+                    const lastMessage = messages[messages.length - 1];
+                    const contentDiv = lastMessage.querySelector('.message-content');
+                    if (contentDiv) {
+                        typeWriterEffect(contentDiv, currentSlideText, 80, null, pausedTypewriterPosition);
+                    }
+                }
+            }
+            
+            // Resume speech if audio enabled and not complete
+            if (isAudioEnabled && pausedSpeechPosition < currentSlideWords.length) {
+                setTimeout(() => {
+                    speakText(currentSlideText, null, pausedSpeechPosition);
+                }, 100);
+            }
+            
+            // Clear paused positions
+            pausedSpeechPosition = 0;
+            pausedTypewriterPosition = 0;
+        }
+        
+        function skipToNextSlide() {
+            if (!ws || !conversationId) return;
+            
+            const now = Date.now();
+            if (now - lastCommandTime < 500) return;
+            lastCommandTime = now;
+            
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            
+            if (currentTypewriterTimer) {
+                clearTimeout(currentTypewriterTimer);
+                currentTypewriterTimer = null;
+            }
+            
+            currentSpeechPosition = 0;
+            currentTypewriterPosition = 0;
+            pausedSpeechPosition = 0;
+            pausedTypewriterPosition = 0;
+            currentSlideText = '';
+            currentSlideWords = [];
+            
+            isPresentationPaused = false;
+            const pauseButton = document.getElementById('pauseResumeButton');
+            pauseButton.textContent = '⏸️';
+            pauseButton.title = 'Pause';
+            
+            isProcessingQueue = false;
+            setTimeout(() => {
+                processMessageQueue();
+            }, 100);
+            
+            ws.send(JSON.stringify({
+                command: 'next_slide'
+            }));
+            updateStatus('Moving to next slide...');
+        }
+        
+        function showPresentationControls(show) {
+            const controls = document.getElementById('presentationControls');
+            controls.style.display = show ? 'flex' : 'none';
+        }
+        
+        function toggleAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            const button = document.getElementById('audioToggle');
+            
+            if (isAudioEnabled) {
+                // Unmuting - re-enable audio and sync with current text position
+                button.textContent = '🔊';
+                button.title = 'Turn Audio Off';
+                button.classList.remove('muted');
+                updateStatus('Audio enabled');
+                
+                // If presentation is ongoing, start speaking from current typewriter position
+                if (currentSlideText && currentSlideWords.length > 0 && isInPresentation && !isPresentationPaused) {
+                    // Calculate speech position based on current typewriter position
+                    const words = currentSlideText.split(/\s+/);
+                    let wordPosition = 0;
+                    let charCount = 0;
+                    
+                    // Find word position corresponding to current typewriter position
+                    for (let i = 0; i < words.length; i++) {
+                        const wordLength = words[i].length + 1; // +1 for space
+                        if (charCount + wordLength > currentTypewriterPosition) {
+                            wordPosition = i;
+                            break;
+                        }
+                        charCount += wordLength;
+                        wordPosition = i + 1;
+                    }
+                    
+                    currentSpeechPosition = Math.min(wordPosition, words.length);
+                    
+                    if (currentSpeechPosition < words.length) {
+                        console.log(`UNMUTING: Starting speech from word ${currentSpeechPosition} (typewriter at char ${currentTypewriterPosition})`);
+                        speakText(currentSlideText, null, currentSpeechPosition);
+                    }
+                }
+            } else {
+                // Muting - disable audio but continue typewriter
+                button.textContent = '🔇';
+                button.title = 'Turn Audio On';
+                button.classList.add('muted');
+                
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                }
+                if (speechProgressInterval) {
+                    clearInterval(speechProgressInterval);
+                    speechProgressInterval = null;
+                }
+                
+                updateStatus('Audio muted - presentation continues');
+                
+                // Continue typewriter even when muted
+                // The typewriter should already be running independently
+            }
+        }
+        
+        function toggleVoiceInput() {
+            if (!voiceInputRecognition) {
+                alert('Voice input not supported in this browser. Please use Chrome or Edge.');
+                return;
+            }
+            
+            const button = document.getElementById('voiceInputButton');
+            const input = document.getElementById('messageInput');
+            
+            if (!isVoiceInputRecording) {
+                try {
+                    isVoiceInputRecording = true;
+                    button.classList.add('recording');
+                    button.title = 'Recording... Click to stop';
+                    updateStatus('Listening for your message...');
+                    
+                    voiceInputRecognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        input.value = transcript;
+                        updateStatus(`Voice captured: "${transcript}"`);
+                        
+                        isVoiceInputRecording = false;
+                        button.classList.remove('recording');
+                        button.title = 'Voice Input (Speech to Text)';
+                    };
+                    
+                    voiceInputRecognition.onerror = (event) => {
+                        console.error('Voice input error:', event.error);
+                        isVoiceInputRecording = false;
+                        button.classList.remove('recording');
+                        button.title = 'Voice Input (Speech to Text)';
+                        
+                        if (event.error === 'no-speech') {
+                            updateStatus('No speech detected. Please try again.');
+                        } else if (event.error === 'not-allowed') {
+                            updateStatus('Microphone access denied. Please allow microphone access.');
+                        } else {
+                            updateStatus(`Voice input error: ${event.error}`);
+                        }
+                    };
+                    
+                    voiceInputRecognition.onend = () => {
+                        isVoiceInputRecording = false;
+                        button.classList.remove('recording');
+                        button.title = 'Voice Input (Speech to Text)';
+                        if (input.value.trim() === '') {
+                            updateStatus('No speech captured. Try again.');
+                        }
+                    };
+                    
+                    voiceInputRecognition.start();
+                    
+                } catch (error) {
+                    console.error('Error starting voice recognition:', error);
+                    isVoiceInputRecording = false;
+                    button.classList.remove('recording');
+                    updateStatus('Error starting voice input');
+                }
+            } else {
+                try {
+                    voiceInputRecognition.stop();
+                } catch (error) {
+                    console.error('Error stopping voice recognition:', error);
+                }
+            }
+        }
+        
+        // Event listeners
+        window.addEventListener('load', () => {
+            // File input event listener
+            document.getElementById('fileInput').addEventListener('change', uploadPDFs);
+            
+            // Message sending
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            // Mode toggle
+            document.getElementById('modeToggle').addEventListener('click', toggleVoiceMode);
+            
+            // Presentation controls
+            document.getElementById('pauseResumeButton').addEventListener('click', togglePauseResume);
+            document.getElementById('nextButton').addEventListener('click', skipToNextSlide);
+            
+            // Audio and voice controls
+            document.getElementById('audioToggle').addEventListener('click', toggleAudio);
+            
+            const voiceInputBtn = document.getElementById('voiceInputButton');
+            if (voiceInputBtn) {
+                voiceInputBtn.addEventListener('click', toggleVoiceInput);
+            }
+            
+            // Initialize particles and voices
+            createParticles();
+            setInterval(createParticles, 10000);
+            
+            if (speechSynthesis) {
+                speechSynthesis.getVoices();
+                speechSynthesis.onvoiceschanged = () => {
+                    speechSynthesis.getVoices();
+                };
+            }
+        });
+        
+        // Cache management functions (accessible from console)
+        window.getCacheStats = async function() {
+            try {
+                const response = await fetch('/api/cache/stats');
+                const stats = await response.json();
+                console.table(stats.entries);
+                console.log(`Total entries: ${stats.total_entries}, Total pages: ${stats.total_pages}, Cache size: ${stats.cache_size_mb}MB`);
+                return stats;
+            } catch (error) {
+                console.error('Error getting cache stats:', error);
+            }
+        };
+        
+        window.clearCache = async function() {
+            try {
+                const response = await fetch('/api/cache/clear', { method: 'DELETE' });
+                const result = await response.json();
+                console.log('Cache cleared:', result.message);
+                return result;
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+            }
+        };
+        
+        window.removeCacheEntry = async function(hash) {
+            try {
+                const response = await fetch(`/api/cache/entry/${hash}`, { method: 'DELETE' });
+                const result = await response.json();
+                console.log('Cache entry removed:', result.message);
+                return result;
+            } catch (error) {
+                console.error('Error removing cache entry:', error);
+            }
+        };
+    </script>
+</body>
+</html>
